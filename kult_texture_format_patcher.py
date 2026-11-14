@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Safely preview, apply, or restore the KULT: Heretic Kingdoms UI workaround."""
+"""Safely patch KULT: Heretic Kingdoms texture formats."""
 
 import argparse
 import hashlib
@@ -78,10 +78,56 @@ RESOURCES = {
         "original": "3b593a5078707de28acc49539d63a031b1949b12e5f8a241e8284fd24359e7cb",
         "patched": "d274ef18e5b126a7220ff075036120f7686ff4658a21e242aceeba72ee97fddb",
     },
+    "brana": {
+        "entries": 767,
+        "format2": 241,
+        "index": "fc7ec6a9870e5efec8bca85e13c4117c3cf9df8c78d2c658b4bcae6f7ca6ab28",
+        "original": "89818ad16a20bbff1c626e6318d12930f249b6c16437330a083f0bed0528be29",
+        "patched": "d13172d5ad6afcd5ee30c51198022d4d2a4222ebb804e46f780688146eecb3e7",
+    },
+    "dedina01": {
+        "entries": 3710,
+        "format2": 5,
+        "index": "a8c02968e4d97d46eb2ebafc3750c9eb8527a233252d65a7ca0ae116bd3225b4",
+        "original": "5249d4a60d5bf77cb75a31e7c924307ad8fd95e5e615cecf2825d6d872229675",
+        "patched": "e7a13dae76f102b71238aadb42a54d502c6c03814ad3d346899c7d24ebc16e1f",
+    },
+    "dedina02": {
+        "entries": 3779,
+        "format2": 5,
+        "index": "80080c63165c9a4589caa5b92dc62014e82d5bb5cb32c51a0f5aa42d95f313d8",
+        "original": "e631bb3714561827c865be0b3b501e31ac306913533c831c045ff752c6dc9857",
+        "patched": "8941ff68c8107086544addb82e73aa668b391bd40c805dc475c66fb990dc7551",
+    },
+    "jaskyna01": {
+        "entries": 3744,
+        "format2": 1,
+        "index": "f6fdc879d0665187c17af96dfccaa8ab425d63e3cfe39faa404a3576fd0047e3",
+        "original": "ffe0f0cb55a8a45392b9c7c29d7255b12326ed1c52203e9b549f24bce7258aa8",
+        "patched": "ff14b18c208fb2cc0becea7d373dee68926b5f2791d76e2672a07a08f9c0a35d",
+    },
+    "jaskyna02": {
+        "entries": 3744,
+        "format2": 1,
+        "index": "f6fdc879d0665187c17af96dfccaa8ab425d63e3cfe39faa404a3576fd0047e3",
+        "original": "ffe0f0cb55a8a45392b9c7c29d7255b12326ed1c52203e9b549f24bce7258aa8",
+        "patched": "ff14b18c208fb2cc0becea7d373dee68926b5f2791d76e2672a07a08f9c0a35d",
+    },
+    "klastor": {
+        "entries": 1018,
+        "format2": 90,
+        "index": "fbaba62f90abca417d3c836c878f0e2b1f03dabd71ddcc195d1a510579afc9ba",
+        "original": "79efa18c702048e98247927e15799e53581894b6a9c74f0145726a3e67a815f9",
+        "patched": "da80594f326517a4c78d19658785fd1ed44ebd6a5e00f824121f1f802d9a04fd",
+    },
+    "klastorin": {
+        "entries": 1101,
+        "format2": 250,
+        "index": "8b39da89acab743ecd229ccf472d2d21c0a7439e43ee9d287aa39247bdd819b0",
+        "original": "d34322a98f59180f41d721ae1f27ce2f2b7bc922f3efe447d46935e42a5df7ad",
+        "patched": "8ca14eb4afc86de9da1648d0a43d76718df0e2ada92cfb591b28f9791529df43",
+    },
 }
-
-LANGUAGE_CODES = ("br", "ch", "de", "eng", "es", "fr", "it", "ru")
-
 
 def sha256(path: Path) -> str:
     digest = hashlib.sha256()
@@ -89,18 +135,6 @@ def sha256(path: Path) -> str:
         for chunk in iter(lambda: stream.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
-
-
-def configured_resource(game_dir: Path) -> str:
-    config_path = game_dir / "config.cfg"
-    if not config_path.is_file():
-        return "main"
-    for line in config_path.read_text(encoding="utf-8", errors="replace").splitlines():
-        key, separator, value = line.partition("=")
-        if separator and key.strip().lower() == "language":
-            code = value.split("#", 1)[0].strip().lower()
-            return f"main_{code}" if code else "main"
-    return "main"
 
 
 def texture_format_offsets(index_path: Path, data_path: Path, resource: dict) -> list[int]:
@@ -251,12 +285,7 @@ def main() -> None:
         "--game-dir",
         type=Path,
         required=True,
-        help="KULT installation directory containing config.cfg and data/levels",
-    )
-    parser.add_argument(
-        "--language",
-        choices=("main", *LANGUAGE_CODES),
-        help="override config.cfg language (default: detect it; use 'main' for unsuffixed files)",
+        help="KULT installation directory containing data/levels",
     )
     action = parser.add_mutually_exclusive_group()
     action.add_argument("--apply", action="store_true", help="apply the patch")
@@ -264,19 +293,10 @@ def main() -> None:
     args = parser.parse_args()
 
     game_dir = args.game_dir.expanduser()
-    code = args.language
-    if code is None:
-        stem = configured_resource(game_dir)
-    elif code == "main":
-        stem = "main"
-    else:
-        stem = f"main_{code}"
-    if stem not in RESOURCES:
-        parser.error(f"Unsupported language/resource '{stem}'; no files were changed")
-
     action_name = "restore" if args.restore else "apply" if args.apply else "preview"
     try:
-        run(game_dir, stem, action_name)
+        for resource_stem in RESOURCES:
+            run(game_dir, resource_stem, action_name)
     except (OSError, RuntimeError) as error:
         parser.error(str(error))
 

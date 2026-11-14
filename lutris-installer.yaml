@@ -1,0 +1,21 @@
+name: "KULT: Heretic Kingdoms (Proton texture workaround)"
+game_slug: kult-heretic-kingdoms
+version: "Steam install with texture workaround"
+slug: kult-heretic-kingdoms-proton-texture-workaround
+runner: steam
+year: 2004
+script:
+  require-binaries: python3
+  game:
+    appid: 277650
+  files:
+    - patcher: "https://raw.githubusercontent.com/illiusterka/kult-compat/main/kult_texture_format_patcher.py"
+    - steam_game: "$STEAM:277650:."
+  installer:
+    - execute:
+        file: patcher
+        args: --game-dir "$steam_game" --apply
+        disable_runtime: true
+  install_complete_text: >-
+    Steam installed the game and texture-format corrections were applied to all verified archives.
+    If needed, choose a Proton version for this game in Steam's Compatibility settings.
